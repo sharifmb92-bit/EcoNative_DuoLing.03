@@ -5,7 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Eco Nativo Dual</title>
     
-    <!-- Enlaces para PWA -->
+    <!-- Meta etiquetas para WhatsApp y Redes Sociales -->
+    <meta property="og:title" content="Eco Nativo Dual">
+    <meta property="og:description" content="Traductor simultáneo cara a cara para conductores y viajeros.">
+    <!-- Si ves que el icono no sale en WhatsApp, cambia 'icon-512.png' por tu dirección completa de GitHub -->
+    <meta property="og:image" content="icon-512.png">
+    <meta property="og:type" content="website">
+
+    <!-- Enlaces para PWA (Instalación) -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e1e1e">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -40,6 +47,25 @@
             position: relative;
         }
 
+        /* Botón Compartir */
+        .share-btn {
+            position: absolute;
+            top: calc(10px + env(safe-area-inset-top));
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2000;
+            color: white;
+        }
+
         #splash {
             position: fixed;
             inset: 0;
@@ -49,7 +75,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: 3000;
             transition: opacity 0.5s ease;
         }
         #splash.hidden { opacity: 0; pointer-events: none; }
@@ -164,7 +190,6 @@
             align-items: center; 
             justify-content: center; 
             transition: all 0.2s ease;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
         
         .flag-btn.active { 
@@ -178,6 +203,9 @@
     </style>
 </head>
 <body>
+
+    <!-- Botón de compartir nativo -->
+    <button class="share-btn" onclick="compartirApp()">📤</button>
 
     <div id="splash">
         <div style="font-size: 60px; margin-bottom: 20px;">🗣️</div>
@@ -210,10 +238,25 @@
     </div>
 
     <script>
-        // REGISTRO DEL SERVICE WORKER PARA INSTALACIÓN
+        // REGISTRO DEL SERVICE WORKER
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js')
-                .then(() => console.log("Service Worker Registrado"));
+                .then(() => console.log("SW OK"));
+        }
+
+        // FUNCIÓN COMPARTIR
+        async function compartirApp() {
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Eco Nativo Dual',
+                        text: 'Traductor simultáneo para conductores.',
+                        url: window.location.href
+                    });
+                } catch (err) { console.log(err); }
+            } else {
+                alert("Copia la URL para compartir");
+            }
         }
 
         let targetLang = 'en';
