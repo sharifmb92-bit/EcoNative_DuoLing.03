@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Eco Nativo Dual</title>
     
-    <!-- Meta etiquetas para WhatsApp y Redes Sociales -->
+    <!-- META ETIQUETAS PARA WHATSAPP E ICONO (OPEN GRAPH) -->
     <meta property="og:title" content="Eco Nativo Dual">
-    <meta property="og:description" content="Traductor simultáneo cara a cara para conductores y viajeros.">
-    <!-- Si ves que el icono no sale en WhatsApp, cambia 'icon-512.png' por tu dirección completa de GitHub -->
+    <meta property="og:description" content="Traductor inteligente cara a cara para recepción y conductores.">
     <meta property="og:image" content="icon-512.png">
     <meta property="og:type" content="website">
 
-    <!-- Enlaces para PWA (Instalación) -->
+    <!-- CONFIGURACIÓN PWA PARA INSTALACIÓN -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e1e1e">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,137 +29,76 @@
 
         * { 
             box-sizing: border-box; 
-            margin: 0; 
-            padding: 0; 
+            margin: 0; padding: 0; 
             font-family: -apple-system, system-ui, sans-serif; 
             -webkit-tap-highlight-color: transparent;
         }
 
         body, html { 
             height: 100dvh; 
-            max-height: 100dvh;
             overflow: hidden; 
             background-color: #000;
-            display: flex; 
-            flex-direction: column;
+            display: flex; flex-direction: column;
             user-select: none;
-            position: relative;
         }
 
-        /* Botón Compartir */
-        .share-btn {
-            position: absolute;
-            top: calc(10px + env(safe-area-inset-top));
-            right: 20px;
-            background: rgba(255,255,255,0.1);
-            border: none;
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            font-size: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 2000;
-            color: white;
-        }
-
+        /* Pantalla de carga */
         #splash {
-            position: fixed;
-            inset: 0;
-            background: #1e1e1e;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 3000;
-            transition: opacity 0.5s ease;
+            position: fixed; inset: 0; background: #1e1e1e; color: white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 3000; transition: opacity 0.5s ease;
         }
         #splash.hidden { opacity: 0; pointer-events: none; }
 
+        /* Contenedor Superior (Cliente) */
         #part-client {
-            height: 50dvh;
-            background-color: var(--bg-client);
-            transform: rotate(180deg);
-            display: flex; 
-            flex-direction: column;
-            padding: 40px 30px; 
-            justify-content: center; 
-            align-items: center;
-            position: relative;
-            border-bottom: 1px solid #ddd;
+            height: 50dvh; background-color: var(--bg-client);
+            transform: rotate(180deg); display: flex; flex-direction: column;
+            padding: 40px 30px; justify-content: center; align-items: center;
+            position: relative; border-bottom: 1px solid #ddd;
         }
 
+        /* Contenedor Inferior (Tú / Recepción) */
         #part-me {
-            height: 50dvh;
-            background-color: var(--bg-me);
-            color: white;
-            display: flex; 
-            flex-direction: column;
-            padding: 30px; 
-            justify-content: center; 
-            align-items: center;
-            position: relative;
+            height: 50dvh; background-color: var(--bg-me); color: white;
+            display: flex; flex-direction: column; padding: 30px;
+            justify-content: center; align-items: center; position: relative;
             padding-bottom: calc(100px + env(safe-area-inset-bottom));
         }
 
         .lang-label {
-            font-size: 11px; 
-            font-weight: 900; 
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
-            opacity: 0.7;
+            font-size: 11px; font-weight: 900; text-transform: uppercase;
+            letter-spacing: 2px; margin-bottom: 10px; opacity: 0.7;
         }
         #part-client .lang-label { color: #555; }
 
         .text-display {
-            font-size: 26px; 
-            font-weight: 700; 
-            text-align: center;
-            width: 100%; 
-            line-height: 1.3;
-            max-height: 150px;
-            overflow: hidden;
+            font-size: 26px; font-weight: 700; text-align: center;
+            width: 100%; line-height: 1.3;
         }
         .client-text { color: #333; }
         .me-text { color: #fff; }
+        .status-msg { font-size: 16px; font-weight: 400; font-style: italic; opacity: 0.6; }
 
+        /* Control Central del Micrófono */
         .controls {
-            position: absolute; 
-            top: 50%; 
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 500; 
-            pointer-events: none;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 500; 
+            pointer-events: none; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
         }
 
         .mic-wrapper {
-            position: absolute;
-            pointer-events: auto;
+            position: absolute; pointer-events: auto;
             transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         .mic-btn {
-            width: 85px; 
-            height: 85px; 
-            border-radius: 50%;
-            border: 6px solid #000; 
-            background: var(--c-idle); 
-            color: white; 
-            font-size: 35px; 
-            cursor: pointer;
+            width: 85px; height: 85px; border-radius: 50%;
+            border: 6px solid #000; background: var(--c-idle); 
+            color: white; font-size: 35px; cursor: pointer;
             box-shadow: 0 5px 15px rgba(0,0,0,0.4);
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             transition: all 0.3s ease;
         }
 
@@ -169,65 +107,48 @@
         .mode-me .mic-btn { background: var(--c-me); box-shadow: 0 0 30px var(--c-me); }
         .mode-client .mic-btn { background: var(--c-client); box-shadow: 0 0 30px var(--c-client); }
 
+        /* Botones de banderas */
         .flags {
-            position: absolute; 
-            bottom: calc(30px + env(safe-area-inset-bottom)); 
-            display: flex; 
-            gap: 15px;
-            z-index: 600; 
-            pointer-events: auto;
+            position: absolute; bottom: calc(30px + env(safe-area-inset-bottom)); 
+            display: flex; gap: 15px; z-index: 600; 
         }
         
         .flag-btn {
-            font-size: 26px; 
-            background: rgba(255,255,255,0.1); 
-            border: 2px solid transparent; 
-            cursor: pointer; 
-            border-radius: 50%; 
-            width: 55px; 
-            height: 55px;
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
+            font-size: 26px; background: rgba(255,255,255,0.1); 
+            border: 2px solid transparent; border-radius: 50%; 
+            width: 55px; height: 55px; display: flex; 
+            align-items: center; justify-content: center; 
             transition: all 0.2s ease;
         }
         
-        .flag-btn.active { 
-            border-color: var(--c-me); 
-            background: rgba(255,255,255,0.2); 
-            transform: scale(1.1); 
-        }
-
-        #lang-label-wrapper { transition: transform 0.5s ease; }
-        .shift-label { transform: translateY(-20px); }
+        .flag-btn.active { border-color: var(--c-me); background: rgba(255,255,255,0.2); transform: scale(1.1); }
     </style>
 </head>
 <body>
 
-    <!-- Botón de compartir nativo -->
-    <button class="share-btn" onclick="compartirApp()">📤</button>
-
     <div id="splash">
         <div style="font-size: 60px; margin-bottom: 20px;">🗣️</div>
         <h2 style="letter-spacing: 4px; font-weight: 300;">ECO NATIVO DUAL</h2>
+        <p style="font-size: 12px; margin-top: 10px; opacity: 0.5;">Motor de Inteligencia Contextual</p>
     </div>
 
+    <!-- Parte Superior (Cliente) -->
     <div id="part-client">
-        <div id="lang-label-wrapper">
-            <div class="lang-label" id="label-client">INGLÉS</div>
-        </div>
+        <div class="lang-label" id="label-client">INGLÉS</div>
         <div class="text-display client-text" id="text-client">...</div>
     </div>
 
+    <!-- Micrófono -->
     <div class="controls" id="control-zone">
         <div class="mic-wrapper">
             <button class="mic-btn" id="main-mic" onclick="toggleApp()">🎙️</button>
         </div>
     </div>
 
+    <!-- Parte Inferior (Recepción / Tú) -->
     <div id="part-me">
         <div class="lang-label">ESPAÑOL (TÚ)</div>
-        <div class="text-display me-text" id="text-me">Pulsa el botón para iniciar</div>
+        <div class="text-display me-text" id="text-me">Pulsa para iniciar</div>
         
         <div class="flags">
             <button class="flag-btn active" onclick="setLang('en', 'Inglés', event)">🇬🇧</button>
@@ -238,25 +159,9 @@
     </div>
 
     <script>
-        // REGISTRO DEL SERVICE WORKER
+        // Registro del Service Worker para permitir la instalación
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js')
-                .then(() => console.log("SW OK"));
-        }
-
-        // FUNCIÓN COMPARTIR
-        async function compartirApp() {
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: 'Eco Nativo Dual',
-                        text: 'Traductor simultáneo para conductores.',
-                        url: window.location.href
-                    });
-                } catch (err) { console.log(err); }
-            } else {
-                alert("Copia la URL para compartir");
-            }
+            navigator.serviceWorker.register('./sw.js').then(() => console.log("System Ready"));
         }
 
         let targetLang = 'en';
@@ -278,72 +183,65 @@
             if(navigator.vibrate) navigator.vibrate(50);
         }
 
+        // LIMPIADOR DE CONTEXTO (Corrige errores como Mahon, Dr, etc.)
+        function aiContextualSanitizer(text, context) {
+            let clean = text.trim();
+            const rules = [
+                { m: /mahón|mahon|my home/gi, r: "Mahón" },
+                { m: /\bdr\b|\bdoctora\b|drive sanchez/gi, r: "Dr. Sanchez" },
+                { m: /dimelo bien/gi, r: "Dígamelo con detalle" },
+                { m: /tell me well/gi, r: "Explain in detail" }
+            ];
+            rules.forEach(rule => { clean = clean.replace(rule.m, rule.r); });
+            return clean;
+        }
+
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = false;
 
         function toggleApp() {
-            if (isRunning) {
-                stopConversation();
-            } else {
-                isRunning = true;
-                currentTurn = 'me';
-                startListening();
-            }
+            if (isRunning) stopConversation();
+            else { isRunning = true; currentTurn = 'me'; startListening(); }
         }
 
         function updateUI() {
             const container = document.getElementById('control-zone');
-            const labelWrapper = document.getElementById('lang-label-wrapper');
-            
-            if (!isRunning) {
-                container.className = 'controls';
-                labelWrapper.className = '';
-                return;
-            }
-
-            if (currentTurn === 'me') {
-                container.className = 'controls pos-me mode-me';
-                labelWrapper.className = ''; 
-            } else {
-                container.className = 'controls pos-client mode-client';
-                labelWrapper.className = 'shift-label'; 
-            }
+            if (!isRunning) { container.className = 'controls'; return; }
+            container.className = currentTurn === 'me' ? 'controls pos-me mode-me' : 'controls pos-client mode-client';
         }
 
         function startListening() {
             if (!isRunning) return;
             updateUI();
-            
             clearTimeout(autoStopTimer);
             autoStopTimer = setTimeout(stopConversation, 15000);
 
-            if (currentTurn === 'me') {
-                recognition.lang = 'es-ES';
-                document.getElementById('text-me').innerText = "🎤 Habla ahora...";
-            } else {
-                recognition.lang = langCodes[targetLang];
-                document.getElementById('text-client').innerText = "🎤 Escuchando...";
-            }
+            recognition.lang = currentTurn === 'me' ? 'es-ES' : langCodes[targetLang];
+            
+            if (currentTurn === 'me') document.getElementById('text-me').innerHTML = '<span class="status-msg">🎤 Escuchando...</span>';
+            else document.getElementById('text-client').innerHTML = '<span class="status-msg">🎤 Listening...</span>';
 
             try { recognition.start(); } catch(e) {}
         }
 
         recognition.onresult = async (event) => {
             clearTimeout(autoStopTimer);
-            const transcript = event.results[0][0].transcript;
-            
-            const from = currentTurn === 'me' ? 'es' : targetLang; 
-            const to = currentTurn === 'me' ? targetLang : 'es';
+            let transcript = event.results[0][0].transcript;
+            transcript = aiContextualSanitizer(transcript);
 
             if (currentTurn === 'me') document.getElementById('text-me').innerText = transcript;
             else document.getElementById('text-client').innerText = transcript;
 
             try {
-                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(transcript)}&langpair=${from}|${to}`);
+                const from = currentTurn === 'me' ? 'es' : targetLang; 
+                const to = currentTurn === 'me' ? targetLang : 'es';
+                
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(transcript)}&langpair=${from}|${to}&context=Reception_Medical_Hospitality`);
                 const data = await res.json();
                 let translated = data.responseData.translatedText;
+                translated = aiContextualSanitizer(translated);
 
                 if (currentTurn === 'me') {
                     document.getElementById('text-client').innerText = translated;
@@ -363,15 +261,13 @@
             }
         };
 
-        recognition.onerror = () => {
-            if (isRunning) setTimeout(startListening, 600);
-        };
+        recognition.onerror = () => { if (isRunning) setTimeout(startListening, 600); };
 
         function speak(text, lang, callback) {
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(text);
             u.lang = lang;
-            u.rate = 0.95;
+            u.rate = 0.85;
             u.onend = callback;
             window.speechSynthesis.speak(u);
         }
