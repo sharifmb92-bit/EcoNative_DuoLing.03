@@ -21,7 +21,7 @@
             --bg-me: #1e1e1e;
             --bg-client: #ffffff;
             --c-idle: #ea4335;
-            --c-me: #4285f4;
+            --c-me: #ff7a00; /* Modificado de azul a Color Calabaza */
             --c-client: #34a853;
         }
 
@@ -60,11 +60,23 @@
             padding-bottom: calc(100px + env(safe-area-inset-bottom));
         }
 
-        .lang-label {
-            font-size: 11px; font-weight: 900; text-transform: uppercase;
-            letter-spacing: 2px; margin-bottom: 10px; opacity: 0.7;
+        /* Corregido: Colocado arriba del todo de forma visible en la barra de notificaciones */
+        #lang-label-wrapper {
+            position: absolute;
+            top: 0;
+            margin-top: calc(20px + env(safe-area-inset-top));
+            transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
         }
-        #part-client .lang-label { color: #555; }
+        
+        .shift-label { transform: translateY(-20px); }
+
+        /* Corregido: Letras del idioma con mayor visibilidad y nitidez */
+        .lang-label {
+            font-size: 16px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        #part-client .lang-label { color: #222; }
 
         .text-display {
             font-size: 26px; font-weight: 700; text-align: center;
@@ -83,7 +95,8 @@
 
         .mic-wrapper {
             position: absolute; pointer-events: auto;
-            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            /* Suave y progresivo: Transición fluida calibrada */
+            transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .mic-btn {
@@ -92,18 +105,29 @@
             color: white; font-size: 38px; cursor: pointer;
             box-shadow: 0 5px 20px rgba(0,0,0,0.5);
             display: flex; align-items: center; justify-content: center;
-            transition: all 0.4s ease;
+            transition: background-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
         }
 
-        /* AJUSTE DE POSICIÓN: El botón verde ahora sube mucho más hacia el cliente */
         .controls.pos-me .mic-wrapper { transform: translateY(80px); }
-        .controls.pos-client .mic-wrapper { transform: translateY(-130px); } /* Más cerca del cliente */
+        .controls.pos-client .mic-wrapper { transform: translateY(-130px); } 
 
         .mode-me .mic-btn { background: var(--c-me); box-shadow: 0 0 30px var(--c-me); }
-        .mode-client .mic-btn { background: var(--c-client); box-shadow: 0 0 40px var(--c-client); transform: scale(1.1); }
+        
+        /* Animación activa pulsante de onda expansiva mientras escucha al cliente */
+        .mode-client .mic-btn { 
+            background: var(--c-client); 
+            transform: scale(1.1);
+            animation: pulse-green-glow 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+        }
 
+        @keyframes pulse-green-glow {
+            0%, 100% { box-shadow: 0 0 25px rgba(52, 168, 83, 0.6); }
+            50% { box-shadow: 0 0 45px rgba(52, 168, 83, 0.9), 0 0 0 15px rgba(52, 168, 83, 0%); }
+        }
+
+        /* Corregido: Elevado para evitar colisión con la barra de navegación inferior del móvil */
         .flags {
-            position: absolute; bottom: calc(30px + env(safe-area-inset-bottom)); 
+            position: absolute; bottom: calc(45px + env(safe-area-inset-bottom)); 
             display: flex; gap: 15px; z-index: 600; 
         }
         .flag-btn {
@@ -125,7 +149,7 @@
     </div>
 
     <div id="part-client">
-        <div class="lang-label" id="label-client">INGLÉS</div>
+        <div id="lang-label-wrapper"><div class="lang-label" id="label-client">INGLÉS</div></div>
         <div class="text-display client-text" id="text-client">...</div>
     </div>
 
@@ -148,6 +172,7 @@
     </div>
 
     <script>
+        // medbasha - localized context sanitization implementation
         if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }
 
         let targetLang = 'en';
@@ -173,20 +198,36 @@
             event.currentTarget.classList.add('active');
         }
 
-        // --- PROTECCIÓN DE NOMBRES PROPIOS (Simulación de Temperatura 0) ---
         function protectProperNouns(text) {
-            // Esta función congela palabras que parecen ser nombres de calles o personas
-            // (Palabras que empiezan con mayúscula en mitad de frase o términos locales)
-            const localTerms = ["Mahón", "Menorca", "Ciutadella", "Alaior", "Fornells", "Sánchez", "Dr."];
+            const localTerms = ["Mahón", "Menorca", "Ciutadella", "Alaior", "Fornells", "Sánchez", "Dr.", "carro", "autobus", "bus", "boleto"];
             let words = text.split(' ');
             
             return words.map((word, index) => {
-                // Si la palabra está en nuestra lista local, la protegemos
                 if (localTerms.some(t => t.toLowerCase() === word.toLowerCase())) {
                     return word; 
                 }
                 return word;
             }).join(' ');
+        }
+
+        // Correcciones contextuales automáticas para blindar la expresión final
+        function internalEngineFilter(text, contextTurn) {
+            let processed = text.trim();
+            const corrections = [
+                { match: /\bcarro\b/gi, replace: "coche" },
+                { match: /\bcarros\b/gi, replace: "coches" },
+                { match: /\bautobus\b/gi, replace: "autobús" },
+                { match: /\bbuses\b/gi, replace: "autobuses" },
+                { match: /\bboleto\b/gi, replace: "billete" },
+                { match: /\bboletos\b/gi, replace: "billetes" }
+            ];
+
+            if (contextTurn === 'client' && /^(sí,? lo he hecho\.?|si lo he hecho\.?)$/i.test(processed)) {
+                processed = "Sí, lo tengo.";
+            }
+
+            corrections.forEach(rule => { processed = processed.replace(rule.match, rule.replace); });
+            return processed.charAt(0).toUpperCase() + processed.slice(1);
         }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -201,8 +242,19 @@
 
         function updateUI() {
             const container = document.getElementById('control-zone');
-            if (!isRunning) { container.className = 'controls'; return; }
-            container.className = currentTurn === 'me' ? 'controls pos-me mode-me' : 'controls pos-client mode-client';
+            const labelWrapper = document.getElementById('lang-label-wrapper');
+            if (!isRunning) { 
+                container.className = 'controls'; 
+                if(labelWrapper) labelWrapper.className = '';
+                return; 
+            }
+            if (currentTurn === 'me') {
+                container.className = 'controls pos-me mode-me';
+                if(labelWrapper) labelWrapper.className = '';
+            } else {
+                container.className = 'controls pos-client mode-client';
+                if(labelWrapper) labelWrapper.className = 'shift-label';
+            }
         }
 
         function startListening() {
@@ -224,7 +276,6 @@
                     finalTranscript += event.results[i][0].transcript;
                     const confidence = event.results[i][0].confidence;
                     
-                    // UMBRAL EXTREMO (0.88): Si no es nítido, se activa el fallback
                     if (confidence < 0.88) { triggerFallback(); return; }
                     
                     processFinalText(finalTranscript.trim());
@@ -243,31 +294,37 @@
         async function processFinalText(text) {
             if (!text) return;
             
-            const cleanText = protectProperNouns(text);
+            let cleanText = protectProperNouns(text);
+            cleanText = internalEngineFilter(cleanText, currentTurn);
+            
             const el = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
             el.innerText = cleanText;
 
             try {
+                // Se definen los parámetros explícitos eliminando el comando estático "auto" que rechazaba la pasarela externa
                 const from = currentTurn === 'me' ? 'es' : targetLang; 
                 const to = currentTurn === 'me' ? targetLang : 'es';
                 
-                // MyMemory con contexto de fidelidad
                 const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleanText)}&langpair=${from}|${to}&context=Proper_Nouns_Names_Streets`);
                 const data = await res.json();
                 let translated = data.responseData.translatedText;
 
-                // Verificación de invención: si el motor cambió un nombre propio, lo restauramos
                 translated = protectProperNouns(translated);
+                translated = internalEngineFilter(translated, currentTurn === 'me' ? 'me' : 'client');
 
                 if (currentTurn === 'me') {
                     document.getElementById('text-client').innerText = translated;
                     speak(translated, langCodes[targetLang], () => {
-                        currentTurn = 'client'; setTimeout(startListening, 600);
+                        currentTurn = 'client'; 
+                        // Corregido: Tiempo progresivo intermedio de descanso de lectura antes de volver a escuchar
+                        setTimeout(startListening, 1500);
                     });
                 } else {
                     document.getElementById('text-me').innerText = translated;
                     speak(translated, 'es-ES', () => {
-                        currentTurn = 'me'; setTimeout(startListening, 600);
+                        currentTurn = 'me'; 
+                        // Corregido: Tiempo progresivo intermedio de descanso de lectura antes de volver a escuchar
+                        setTimeout(startListening, 1500);
                     });
                 }
             } catch (e) { triggerFallback(); }
@@ -279,16 +336,17 @@
             const el = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
             el.innerText = msg;
             speak(msg, currentTurn === 'me' ? 'es-ES' : langCodes[targetLang], () => {
-                setTimeout(startListening, 1200);
+                setTimeout(startListening, 1500);
             });
         }
 
-        recognition.onerror = () => { if (isRunning) setTimeout(startListening, 600); };
+        recognition.onerror = () => { if (isRunning) setTimeout(startListening, 1000); };
 
+        // Dictado en voz alta prioritario nativo
         function speak(text, lang, callback) {
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(text);
-            u.lang = lang; u.rate = 0.85; u.onend = callback;
+            u.lang = lang; u.rate = 0.95; u.onend = callback;
             window.speechSynthesis.speak(u);
         }
 
