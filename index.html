@@ -21,7 +21,7 @@
             --bg-me: #1e1e1e;
             --bg-client: #ffffff;
             --c-idle: #ea4335;
-            --c-me: #ff7a00; /* Modificado de azul a Color Calabaza */
+            --c-me: #ff7a00; 
             --c-client: #34a853;
         }
 
@@ -57,26 +57,13 @@
             height: 50dvh; background-color: var(--bg-me); color: white;
             display: flex; flex-direction: column; padding: 30px;
             justify-content: center; align-items: center; position: relative;
-            padding-bottom: calc(100px + env(safe-area-inset-bottom));
         }
 
-        /* Corregido: Colocado arriba del todo de forma visible en la barra de notificaciones */
-        #lang-label-wrapper {
-            position: absolute;
-            top: 0;
-            margin-top: calc(20px + env(safe-area-inset-top));
-            transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 10;
-        }
-        
-        .shift-label { transform: translateY(-20px); }
-
-        /* Corregido: Letras del idioma con mayor visibilidad y nitidez */
         .lang-label {
             font-size: 16px; font-weight: 800; text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 2px; color: var(--c-me); margin-bottom: 15px;
+            text-align: center;
         }
-        #part-client .lang-label { color: #222; }
 
         .text-display {
             font-size: 26px; font-weight: 700; text-align: center;
@@ -95,7 +82,6 @@
 
         .mic-wrapper {
             position: absolute; pointer-events: auto;
-            /* Suave y progresivo: Transición fluida calibrada */
             transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
@@ -113,7 +99,6 @@
 
         .mode-me .mic-btn { background: var(--c-me); box-shadow: 0 0 30px var(--c-me); }
         
-        /* Animación activa pulsante de onda expansiva mientras escucha al cliente */
         .mode-client .mic-btn { 
             background: var(--c-client); 
             transform: scale(1.1);
@@ -125,19 +110,21 @@
             50% { box-shadow: 0 0 45px rgba(52, 168, 83, 0.9), 0 0 0 15px rgba(52, 168, 83, 0%); }
         }
 
-        /* Corregido: Elevado para evitar colisión con la barra de navegación inferior del móvil */
         .flags {
-            position: absolute; bottom: calc(45px + env(safe-area-inset-bottom)); 
+            position: absolute; 
+            top: calc(15px + env(safe-area-inset-top)); 
             display: flex; gap: 15px; z-index: 600; 
+            transform: rotate(180deg);
         }
         .flag-btn {
-            font-size: 26px; background: rgba(255,255,255,0.1); 
+            font-size: 26px; background: rgba(0,0,0,0.05); 
             border: 2px solid transparent; border-radius: 50%; 
             width: 55px; height: 55px; display: flex; 
             align-items: center; justify-content: center; 
             transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
-        .flag-btn.active { border-color: var(--c-me); background: rgba(255,255,255,0.2); transform: scale(1.1); }
+        .flag-btn.active { border-color: var(--c-me); background: rgba(0,0,0,0.1); transform: scale(1.1); }
     </style>
 </head>
 <body>
@@ -149,7 +136,12 @@
     </div>
 
     <div id="part-client">
-        <div id="lang-label-wrapper"><div class="lang-label" id="label-client">INGLÉS</div></div>
+        <div class="flags">
+            <button class="flag-btn active" onclick="setLang('en', 'Inglés', event)">🇬🇧</button>
+            <button class="flag-btn" onclick="setLang('fr', 'Francés', event)">🇫🇷</button>
+            <button class="flag-btn" onclick="setLang('de', 'Alemán', event)">🇩🇪</button>
+            <button class="flag-btn" onclick="setLang('it', 'Italiano', event)">🇮🇹</button>
+        </div>
         <div class="text-display client-text" id="text-client">...</div>
     </div>
 
@@ -160,25 +152,22 @@
     </div>
 
     <div id="part-me">
-        <div class="lang-label">ESPAÑOL (TÚ)</div>
+        <div class="lang-label" id="label-client">INGLÉS</div>
         <div class="text-display me-text" id="text-me">Pulsa para iniciar</div>
-        
-        <div class="flags">
-            <button class="flag-btn active" onclick="setLang('en', 'Inglés', event)">🇬🇧</button>
-            <button class="flag-btn" onclick="setLang('fr', 'Francés', event)">🇫🇷</button>
-            <button class="flag-btn" onclick="setLang('de', 'Alemán', event)">🇩🇪</button>
-            <button class="flag-btn" onclick="setLang('it', 'Italiano', event)">🇮🇹</button>
-        </div>
     </div>
 
     <script>
-        // medbasha - localized context sanitization implementation
+        // medbasha - cloud acoustic recognition pipeline unifier
         if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }
+
+        const GOOGLE_CLOUD_API_KEY = "AIzaSyDaUBKDwJdQGKq7nwMOTpjWy29XuS4IzJ4";
 
         let targetLang = 'en';
         let isRunning = false;
         let currentTurn = 'me'; 
         let autoStopTimer;
+        let mediaRecorder;
+        let audioChunks = [];
 
         const langCodes = { 'en': 'en-US', 'fr': 'fr-FR', 'de': 'de-DE', 'it': 'it-IT' };
         const fallbackMsgs = {
@@ -186,7 +175,7 @@
             'en': 'I am sorry, I did not understand. Can you repeat?',
             'fr': 'Désolé, je n\'ai pas compris. Pouvez-vous répéter?',
             'de': 'Entschuldigung, das habe ich nicht verstanden. Können Sie das wiederholen?',
-            'it': 'Mi dispiace, non ho capito. Puoi ripetere?'
+            'it': 'Mi dispiace, non ho capito. Puoi repetir?'
         };
 
         window.onload = () => { setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1500); };
@@ -201,16 +190,12 @@
         function protectProperNouns(text) {
             const localTerms = ["Mahón", "Menorca", "Ciutadella", "Alaior", "Fornells", "Sánchez", "Dr.", "carro", "autobus", "bus", "boleto"];
             let words = text.split(' ');
-            
-            return words.map((word, index) => {
-                if (localTerms.some(t => t.toLowerCase() === word.toLowerCase())) {
-                    return word; 
-                }
+            return words.map(word => {
+                if (localTerms.some(t => t.toLowerCase() === word.toLowerCase())) return word; 
                 return word;
             }).join(' ');
         }
 
-        // Correcciones contextuales automáticas para blindar la expresión final
         function internalEngineFilter(text, contextTurn) {
             let processed = text.trim();
             const corrections = [
@@ -230,11 +215,6 @@
             return processed.charAt(0).toUpperCase() + processed.slice(1);
         }
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true; 
-
         function toggleApp() {
             if (isRunning) stopConversation();
             else { isRunning = true; currentTurn = 'me'; startListening(); }
@@ -242,53 +222,85 @@
 
         function updateUI() {
             const container = document.getElementById('control-zone');
-            const labelWrapper = document.getElementById('lang-label-wrapper');
-            if (!isRunning) { 
-                container.className = 'controls'; 
-                if(labelWrapper) labelWrapper.className = '';
-                return; 
-            }
-            if (currentTurn === 'me') {
-                container.className = 'controls pos-me mode-me';
-                if(labelWrapper) labelWrapper.className = '';
-            } else {
-                container.className = 'controls pos-client mode-client';
-                if(labelWrapper) labelWrapper.className = 'shift-label';
-            }
+            if (!isRunning) { container.className = 'controls'; return; }
+            container.className = currentTurn === 'me' ? 'controls pos-me mode-me' : 'controls pos-client mode-client';
         }
 
-        function startListening() {
+        async function startListening() {
             if (!isRunning) return;
             updateUI();
             clearTimeout(autoStopTimer);
+            
             autoStopTimer = setTimeout(stopConversation, 15000);
-            recognition.lang = currentTurn === 'me' ? 'es-ES' : langCodes[targetLang];
-            try { recognition.start(); } catch(e) {}
+
+            const currentDisplay = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
+            currentDisplay.innerHTML = `<span class="interim">🎤 Escuchando...</span>`;
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+                
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result.split(',')[1];
+                        await sendToGoogleSpeech(base64Audio);
+                    };
+                };
+
+                mediaRecorder.start();
+                
+                setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state === "recording") {
+                        mediaRecorder.stop();
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                }, 4500);
+
+            } catch (e) {
+                triggerFallback();
+            }
         }
 
-        recognition.onresult = async (event) => {
-            clearTimeout(autoStopTimer);
-            let interimTranscript = '';
-            let finalTranscript = '';
+        async function sendToGoogleSpeech(base64Audio) {
+            if (!isRunning) return;
+            
+            const currentLangCode = currentTurn === 'me' ? 'es-ES' : langCodes[targetLang];
+            const url = `https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_CLOUD_API_KEY}`;
+            
+            const payload = {
+                config: {
+                    encoding: 'WEBM_OPUS',
+                    sampleRateHertz: 48000,
+                    languageCode: currentLangCode,
+                    enableAutomaticPunctuation: true
+                },
+                audio: { content: base64Audio }
+            };
 
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                    const confidence = event.results[i][0].confidence;
-                    
+            try {
+                const response = await fetch(url, { method: 'POST', body: JSON.stringify(payload) });
+                const data = await response.json();
+                
+                if (data.results && data.results[0]) {
+                    const alternative = data.results[0].alternatives[0];
+                    const transcript = alternative.transcript;
+                    const confidence = alternative.confidence || 1.0;
+
                     if (confidence < 0.88) { triggerFallback(); return; }
-                    
-                    processFinalText(finalTranscript.trim());
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
-                    showInterim(interimTranscript);
-                }
-            }
-        };
 
-        function showInterim(text) {
-            const el = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
-            el.innerHTML = `<span class="interim">${text}</span>`;
+                    processFinalText(transcript.trim());
+                } else {
+                    triggerFallback();
+                }
+            } catch (e) {
+                triggerFallback();
+            }
         }
 
         async function processFinalText(text) {
@@ -301,7 +313,6 @@
             el.innerText = cleanText;
 
             try {
-                // Se definen los parámetros explícitos eliminando el comando estático "auto" que rechazaba la pasarela externa
                 const from = currentTurn === 'me' ? 'es' : targetLang; 
                 const to = currentTurn === 'me' ? targetLang : 'es';
                 
@@ -316,14 +327,12 @@
                     document.getElementById('text-client').innerText = translated;
                     speak(translated, langCodes[targetLang], () => {
                         currentTurn = 'client'; 
-                        // Corregido: Tiempo progresivo intermedio de descanso de lectura antes de volver a escuchar
                         setTimeout(startListening, 1500);
                     });
                 } else {
                     document.getElementById('text-me').innerText = translated;
                     speak(translated, 'es-ES', () => {
                         currentTurn = 'me'; 
-                        // Corregido: Tiempo progresivo intermedio de descanso de lectura antes de volver a escuchar
                         setTimeout(startListening, 1500);
                     });
                 }
@@ -340,9 +349,6 @@
             });
         }
 
-        recognition.onerror = () => { if (isRunning) setTimeout(startListening, 1000); };
-
-        // Dictado en voz alta prioritario nativo
         function speak(text, lang, callback) {
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(text);
@@ -352,7 +358,9 @@
 
         function stopConversation() {
             isRunning = false; clearTimeout(autoStopTimer);
-            try { recognition.stop(); } catch(e) {}
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try { mediaRecorder.stop(); } catch(e) {}
+            }
             window.speechSynthesis.cancel();
             document.getElementById('text-me').innerText = "Modo reposo";
             document.getElementById('text-client').innerText = "...";
