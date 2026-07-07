@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Eco Nativo Dual</title>
+    <title>Eco Nativo Dual 1.1.0</title>
     
-    <meta property="og:title" content="Eco Nativo Dual">
+    <meta property="og:title" content="Eco Nativo Dual 1.1.0">
     <meta property="og:description" content="Traductor profesional de alta fidelity.">
     <meta property="og:image" content="icon-512.png">
     <meta property="og:type" content="website">
@@ -83,7 +83,7 @@
 
         .mic-wrapper {
             position: absolute; pointer-events: auto;
-            transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .mic-btn {
@@ -92,7 +92,7 @@
             color: white; font-size: 38px; cursor: pointer;
             box-shadow: 0 5px 20px rgba(0,0,0,0.5);
             display: flex; align-items: center; justify-content: center;
-            transition: background-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
         }
 
         .controls.pos-me .mic-wrapper { transform: translateY(80px); }
@@ -131,14 +131,12 @@
 
     <div id="splash">
         <div style="font-size: 60px; margin-bottom: 20px;">🗣️</div>
-        <h2 style="letter-spacing: 4px; font-weight: 300;">ECO NATIVO DUAL</h2>
-        <p style="font-size: 10px; margin-top: 10px; opacity: 0.5; letter-spacing: 2px;">MODO FIDELIDAD TOTAL</p>
+        <h2 style="letter-spacing: 4px; font-weight: 300;">ECO NATIVO DUAL 1.1.0</h2>
+        <p style="font-size: 10px; margin-top: 10px; opacity: 0.5; letter-spacing: 2px;">MODO STREAMING LOCAL</p>
     </div>
 
     <div id="part-client">
-        <div class="flags" id="flags-container">
-            <!-- Se generan dinámicamente por JavaScript según el idioma detectado -->
-        </div>
+        <div class="flags" id="flags-container"></div>
         <div class="text-display client-text" id="text-client">...</div>
     </div>
 
@@ -154,19 +152,17 @@
     </div>
 
     <script>
-        // medbasha - cloud acoustic recognition pipeline unifier
+        // medbasha - adaptive local acoustic unifier & hardware rescue protocol
         if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }
 
-        const GOOGLE_CLOUD_API_KEY = "AIzaSyDaUBKDwJdQGKq7nwMOTpjWy29XuS4IzJ4";
-
-        // Configuración de Localización Inteligente
         let userLang = 'es'; 
         let targetLang = 'en';
         let isRunning = false;
+        let isSpeakingNow = false; 
         let currentTurn = 'me'; 
-        let autoStopTimer;
-        let mediaRecorder;
-        let audioChunks = [];
+        let recognition;
+        let hardwareWatchdogTimer;
+        let globalSilenceTimer;
 
         const langCodes = { 'es': 'es-ES', 'en': 'en-US', 'fr': 'fr-FR', 'de': 'de-DE', 'it': 'it-IT' };
         const langNames = {
@@ -190,14 +186,14 @@
             'en': 'I am sorry, I did not understand. Can you repeat?',
             'fr': 'Désolé, je n\'ai pas compris. Pouvez-vous répéter?',
             'de': 'Entschuldigung, das habe ich nicht verstanden. Können Sie das wiederholen?',
-            'it': 'Mi dispiace, non ho capito. Puoi ripetere?'
+            'it': 'Mi dispiace, non ho capito. Puoi repetir?'
         };
 
-        // Inicialización y detección automática al cargar la página
         window.onload = () => {
             detectDeviceLanguage();
             setupFlagsStructure();
             resetToIdleMessage();
+            initSpeechEngine();
             setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1500); 
         };
 
@@ -206,22 +202,18 @@
             const shortLang = sysLang.substring(0, 2).toLowerCase();
             if (['en', 'fr', 'de', 'it'].includes(shortLang)) {
                 userLang = shortLang;
-                targetLang = 'es'; // Si el conductor no es español, el cliente por defecto es España
+                targetLang = 'es';
             } else {
                 userLang = 'es';
-                targetLang = 'en'; // Por defecto para conductor español
+                targetLang = 'en';
             }
         }
 
         function setupFlagsStructure() {
             const container = document.getElementById('flags-container');
             container.innerHTML = '';
-            
-            // Lista completa de idiomas soportados
             const allOptions = ['en', 'fr', 'de', 'it', 'es'];
             const flagIcons = { 'en': '🇬🇧', 'fr': '🇫🇷', 'de': '🇩🇪', 'it': '🇮🇹', 'es': '🇪🇸' };
-
-            // Filtramos el idioma del conductor para no mostrar su propia bandera arriba
             const availableTargets = allOptions.filter(l => l !== userLang);
 
             availableTargets.forEach(lang => {
@@ -231,7 +223,6 @@
                 btn.onclick = (e) => setLang(lang, langNames[lang][userLang], e);
                 container.appendChild(btn);
             });
-
             document.getElementById('label-client').innerText = langNames[targetLang][userLang].toUpperCase();
         }
 
@@ -245,6 +236,64 @@
             document.getElementById('label-client').innerText = name.toUpperCase();
             document.querySelectorAll('.flag-btn').forEach(b => b.classList.remove('active'));
             event.currentTarget.classList.add('active');
+            if (isRunning) stopConversation();
+        }
+
+        function initSpeechEngine() {
+            const SpeechEngine = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechEngine) return;
+
+            recognition = new SpeechEngine();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+
+            recognition.onstart = () => {
+                clearTimeout(hardwareWatchdogTimer);
+                hardwareWatchdogTimer = setTimeout(triggerHardwareRescue, 3500);
+            };
+
+            recognition.onresult = (event) => {
+                clearTimeout(hardwareWatchdogTimer);
+                clearTimeout(globalSilenceTimer);
+
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                const currentDisplay = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
+                
+                if (finalTranscript) {
+                    processFinalText(finalTranscript);
+                } else if (interimTranscript) {
+                    currentDisplay.innerHTML = `<span class="interim">${interimTranscript}</span>`;
+                    hardwareWatchdogTimer = setTimeout(() => { recognition.stop(); }, 3000);
+                }
+            };
+
+            recognition.onerror = (e) => {
+                clearTimeout(hardwareWatchdogTimer);
+                if (isRunning && e.error !== 'no-speech' && !isSpeakingNow) triggerFallback();
+            };
+
+            recognition.onend = () => {
+                clearTimeout(hardwareWatchdogTimer);
+                if (isRunning && currentTurn === 'client' && !isSpeakingNow) {
+                    globalSilenceTimer = setTimeout(startListening, 400);
+                }
+            };
+        }
+
+        function triggerHardwareRescue() {
+            if (!isRunning || isSpeakingNow) return;
+            try { recognition.abort(); } catch(e) {}
+            setTimeout(() => { if (isRunning && !isSpeakingNow) startListening(); }, 300);
         }
 
         function protectProperNouns(text) {
@@ -276,98 +325,47 @@
         }
 
         function toggleApp() {
-            if (isRunning) stopConversation();
-            else { isRunning = true; currentTurn = 'me'; startListening(); }
+            if (isRunning) {
+                stopConversation();
+            } else {
+                isRunning = true; 
+                currentTurn = 'me'; 
+                startListening();
+            }
         }
 
         function updateUI() {
             const container = document.getElementById('control-zone');
-            if (!isRunning) { container.className = 'controls'; return; }
+            if (!isRunning || isSpeakingNow) { 
+                container.className = 'controls'; 
+                return; 
+            }
             container.className = currentTurn === 'me' ? 'controls pos-me mode-me' : 'controls pos-client mode-client';
         }
 
-        async function startListening() {
-            if (!isRunning) return;
+        function startListening() {
+            if (!isRunning || isSpeakingNow) return;
             updateUI();
-            clearTimeout(autoStopTimer);
-            
-            autoStopTimer = setTimeout(stopConversation, 15000);
+            clearTimeout(globalSilenceTimer);
+            clearTimeout(hardwareWatchdogTimer);
 
             const currentDisplay = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
-            
-            // Mensaje transitorio de escucha según el turno e idioma activo
-            const listeningText = currentTurn === 'me' ? (userLang === 'es' ? 'Escuchando...' : 'Listening...') : '...';
-            currentDisplay.innerHTML = `<span class="interim">🎤 ${listeningText}</span>`;
+            currentDisplay.innerHTML = `<span class="interim">🎤 ...</span>`;
 
+            recognition.lang = currentTurn === 'me' ? langCodes[userLang] : langCodes[targetLang];
+            
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-
-                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
-                
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.readAsDataURL(audioBlob);
-                    reader.onloadend = async () => {
-                        const base64Audio = reader.result.split(',')[1];
-                        await sendToGoogleSpeech(base64Audio);
-                    };
-                };
-
-                mediaRecorder.start();
-                
-                setTimeout(() => {
-                    if (mediaRecorder && mediaRecorder.state === "recording") {
-                        mediaRecorder.stop();
-                        stream.getTracks().forEach(track => track.stop());
-                    }
-                }, 4500);
-
+                recognition.start();
             } catch (e) {
-                triggerFallback();
-            }
-        }
-
-        async function sendToGoogleSpeech(base64Audio) {
-            if (!isRunning) return;
-            
-            const currentLangCode = currentTurn === 'me' ? langCodes[userLang] : langCodes[targetLang];
-            const url = `https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_CLOUD_API_KEY}`;
-            
-            const payload = {
-                config: {
-                    encoding: 'WEBM_OPUS',
-                    sampleRateHertz: 48000,
-                    languageCode: currentLangCode,
-                    enableAutomaticPunctuation: true
-                },
-                audio: { content: base64Audio }
-            };
-
-            try {
-                const response = await fetch(url, { method: 'POST', body: JSON.stringify(payload) });
-                const data = await response.json();
-                
-                if (data.results && data.results[0]) {
-                    const alternative = data.results[0].alternatives[0];
-                    const transcript = alternative.transcript;
-                    const confidence = alternative.confidence || 1.0;
-
-                    if (confidence < 0.88) { triggerFallback(); return; }
-
-                    processFinalText(transcript.trim());
-                } else {
-                    triggerFallback();
-                }
-            } catch (e) {
-                triggerFallback();
+                try { recognition.stop(); } catch(err) {}
+                setTimeout(() => { if (isRunning && !isSpeakingNow) recognition.start(); }, 400);
             }
         }
 
         async function processFinalText(text) {
             if (!text) return;
+            clearTimeout(hardwareWatchdogTimer);
+            try { recognition.stop(); } catch(e) {}
             
             let cleanText = protectProperNouns(text);
             cleanText = internalEngineFilter(cleanText, currentTurn);
@@ -390,40 +388,61 @@
                     document.getElementById('text-client').innerText = translated;
                     speak(translated, langCodes[targetLang], () => {
                         currentTurn = 'client'; 
-                        setTimeout(startListening, 1500);
+                        startListening();
                     });
                 } else {
                     document.getElementById('text-me').innerText = translated;
                     speak(translated, langCodes[userLang], () => {
                         currentTurn = 'me'; 
-                        setTimeout(startListening, 1500);
+                        startListening();
                     });
                 }
             } catch (e) { triggerFallback(); }
         }
 
         function triggerFallback() {
+            if (isSpeakingNow) return;
             const lang = currentTurn === 'me' ? userLang : targetLang;
             const msg = fallbackMsgs[lang];
             const el = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
             el.innerText = msg;
+            
             speak(msg, currentTurn === 'me' ? langCodes[userLang] : langCodes[targetLang], () => {
-                setTimeout(startListening, 1500);
+                currentTurn = (currentTurn === 'me') ? 'client' : 'me';
+                startListening();
             });
         }
 
         function speak(text, lang, callback) {
+            isSpeakingNow = true;
+            clearTimeout(globalSilenceTimer);
+            clearTimeout(hardwareWatchdogTimer);
+            
+            try { recognition.abort(); } catch(e) {}
+            updateUI(); 
+
             window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(text);
-            u.lang = lang; u.rate = 0.95; u.onend = callback;
+            u.lang = lang; u.rate = 0.95; 
+            
+            u.onend = () => {
+                isSpeakingNow = false;
+                callback();
+            };
+            u.onerror = () => {
+                isSpeakingNow = false;
+                callback();
+            };
+            
             window.speechSynthesis.speak(u);
         }
 
         function stopConversation() {
-            isRunning = false; clearTimeout(autoStopTimer);
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                try { mediaRecorder.stop(); } catch(e) {}
-            }
+            isRunning = false; 
+            isSpeakingNow = false;
+            clearTimeout(hardwareWatchdogTimer);
+            clearTimeout(globalSilenceTimer);
+            try { recognition.abort(); } catch(e) {}
             window.speechSynthesis.cancel();
             resetToIdleMessage();
             updateUI();
