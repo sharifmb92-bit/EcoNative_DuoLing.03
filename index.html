@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Eco Nativo Dual 1.1.0</title>
+    <title>Eco Nativo Dual 1.2.0</title>
     
-    <meta property="og:title" content="Eco Nativo Dual 1.1.0">
+    <meta property="og:title" content="Eco Nativo Dual 1.2.0">
     <meta property="og:description" content="Traductor profesional de alta fidelity.">
     <meta property="og:image" content="icon-512.png">
     <meta property="og:type" content="website">
@@ -131,8 +131,8 @@
 
     <div id="splash">
         <div style="font-size: 60px; margin-bottom: 20px;">🗣️</div>
-        <h2 style="letter-spacing: 4px; font-weight: 300;">ECO NATIVO DUAL 1.1.0</h2>
-        <p style="font-size: 10px; margin-top: 10px; opacity: 0.5; letter-spacing: 2px;">MODO STREAMING LOCAL</p>
+        <h2 style="letter-spacing: 4px; font-weight: 300;">ECO NATIVO DUAL 1.2.0</h2>
+        <p style="font-size: 10px; margin-top: 10px; opacity: 0.5; letter-spacing: 2px;">HYPEROS AUDIO UNIFIER</p>
     </div>
 
     <div id="part-client">
@@ -163,6 +163,7 @@
         let recognition;
         let hardwareWatchdogTimer;
         let globalSilenceTimer;
+        let lastErrorTime = 0;
 
         const langCodes = { 'es': 'es-ES', 'en': 'en-US', 'fr': 'fr-FR', 'de': 'de-DE', 'it': 'it-IT' };
         const langNames = {
@@ -279,7 +280,19 @@
 
             recognition.onerror = (e) => {
                 clearTimeout(hardwareWatchdogTimer);
-                if (isRunning && e.error !== 'no-speech' && !isSpeakingNow) triggerFallback();
+                if (!isRunning || isSpeakingNow) return;
+
+                // Defensa anti-bucles rápidos para HyperOS
+                const now = Date.now();
+                if (now - lastErrorTime < 400) {
+                    lastErrorTime = now;
+                    return; 
+                }
+                lastErrorTime = now;
+
+                if (e.error !== 'no-speech') {
+                    triggerFallback();
+                }
             };
 
             recognition.onend = () => {
@@ -293,7 +306,7 @@
         function triggerHardwareRescue() {
             if (!isRunning || isSpeakingNow) return;
             try { recognition.abort(); } catch(e) {}
-            setTimeout(() => { if (isRunning && !isSpeakingNow) startListening(); }, 300);
+            setTimeout(() => { if (isRunning && !isSpeakingNow) startListening(); }, 350);
         }
 
         function protectProperNouns(text) {
@@ -407,9 +420,12 @@
             const el = currentTurn === 'me' ? document.getElementById('text-me') : document.getElementById('text-client');
             el.innerText = msg;
             
+            // Forzar cierre estricto del micrófono antes de disparar el audio de la tablet
+            try { recognition.abort(); } catch(e) {}
+            
             speak(msg, currentTurn === 'me' ? langCodes[userLang] : langCodes[targetLang], () => {
                 currentTurn = (currentTurn === 'me') ? 'client' : 'me';
-                startListening();
+                setTimeout(startListening, 350); // Delay defensivo estratégico para HyperOS
             });
         }
 
